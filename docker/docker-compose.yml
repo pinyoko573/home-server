@@ -1,0 +1,63 @@
+services:
+  ddclient:
+    image: lscr.io/linuxserver/ddclient:latest
+    container_name: ddclient
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/GMT-8
+    volumes:
+      - /foo/docker/ddclient/config:/config
+    restart: always
+
+  filebrowser:
+    image: filebrowser/filebrowser
+    container_name: filebrowser
+    user: 1000:1000
+    ports:
+      - "8080:80"
+    volumes:
+      - /foo/files:/srv # files will be stored here
+      - /foo/docker/filebrowser/filebrowser.db:/database.db # users info/settings will be stored here
+      - /foo/docker/filebrowser/filebrowser.json:/.filebrowser.json # config file
+
+  ghost:
+    image: ghost:5.117.0
+    ports:
+      - 8081:2368
+    environment:
+      database__client: mysql
+      database__connection__host: mysql
+      database__connection__user: root
+      database__connection__password: {{GHOST_DATABASE_CONNECTION_PASSWORD}}
+      database__connection__database: ghost
+      url: http://127.0.0.1
+    volumes:
+      - /foo/docker/ghost:/var/lib/ghost/content
+
+  mysql:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: {{MYSQL_ROOT_PASSWORD}}
+    volumes:
+      - /foo/docker/mysql:/var/lib/mysql
+
+  samba:
+    image: dperson/samba
+    environment:
+      TZ: 'Asia/Singapore'
+    networks:
+      - default
+    ports:
+      - "137:137/udp"
+      - "138:138/udp"
+      - "139:139/tcp"
+      - "445:445/tcp"
+    read_only: false
+    tmpfs:
+      - /tmp
+    stdin_open: true
+    tty: true
+    volumes:
+      - /foo/files:/files:z
+    command: '-s "files;/files;yes;no;no;my_user;my_user" -u "my_user;my_user;1000;my_user;1000" -n' # To give access permission
